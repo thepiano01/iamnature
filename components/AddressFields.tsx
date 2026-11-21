@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 /* 카카오(다음) 우편번호 서비스 — 무료, API 키 불필요
    https://postcode.map.kakao.com/guide */
-const SCRIPT_SRC = "https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+// 새 주소(kakaocdn)를 먼저 쓰고, 실패하면 예전 주소(daumcdn, 2026-11-30 종료 예정)로 재시도
+const SCRIPT_SRCS = [
+  "https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js",
+  "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js",
+];
 
 type DaumAddress = {
   zonecode: string;
@@ -27,16 +31,24 @@ function loadScript() {
   if (typeof window === "undefined") return Promise.resolve();
   if (window.daum?.Postcode) return Promise.resolve();
   if (!loading) {
-    loading = new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = SCRIPT_SRC;
-      s.async = true;
-      s.onload = () => resolve();
-      s.onerror = () => {
-        loading = null;
-        reject(new Error("주소 검색을 불러오지 못했어요."));
-      };
-      document.head.appendChild(s);
+    const tryLoad = (src: string) =>
+      new Promise<void>((resolve, reject) => {
+        const el = document.createElement("script");
+        el.src = src;
+        el.async = true;
+        el.onload = () => (window.daum?.Postcode ? resolve() : reject(new Error("no Postcode")));
+        el.onerror = () => {
+          el.remove();
+          reject(new Error("load failed"));
+        };
+        document.head.appendChild(el);
+      });
+    loading = SCRIPT_SRCS.reduce<Promise<void>>(
+      (p, src) => p.catch(() => tryLoad(src)),
+      Promise.reject(new Error("start")),
+    ).catch(() => {
+      loading = null;
+      throw new Error("주소 검색을 불러오지 못했어요.");
     });
   }
   return loading;
