@@ -1,0 +1,449 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int     @id @default(autoincrement())
+  name         String?
+  email        String  @unique
+  passwordHash String?
+
+  // "BUYER" | "SELLER" | "BOTH" 문자열로 사용
+  role String @default("BUYER") // BUYER | SELLER | BOTH | ADMIN
+  suspended Boolean @default(false) // 관리자 이용정지
+
+  // 건강 상태 플래그들
+  healthDiabetes     Boolean @default(false)
+  healthHypertension Boolean @default(false)
+  healthHyperlipid   Boolean @default(false)
+  healthJoint        Boolean @default(false)
+  healthLiver        Boolean @default(false)
+  healthKidney       Boolean @default(false)
+  healthImmune       Boolean @default(false)
+  healthFatigue      Boolean @default(false)
+  healthHeart        Boolean @default(false)
+  healthStomach      Boolean @default(false)
+  healthRespiratory  Boolean @default(false)
+
+  phone    String?
+  address1 String?
+  address2 String?
+  zip      String?
+
+  sellerProfile SellerProfile?
+  products      Product[]
+  cartItems     CartItem[]
+  orders        Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SellerProfile {
+  id     Int @id @default(autoincrement())
+  userId Int @unique
+
+  farmName       String?
+  businessNumber String?
+
+  permitImage String?
+  idCardImage String?
+  verified    Boolean @default(false)
+
+  // 관리자 심사
+  rejectReason String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  title       String
+  price       Int
+  hidden      Boolean  @default(false) // 관리자 숨김
+  quantity    Int
+  unit        String
+  formState   String
+  harvestDate DateTime?
+  region      String?
+  description String?
+
+  // 프론트에서 쓰는 자유 텍스트 식물명(판매자가 임의 입력)
+  plantName String?
+
+  // (구버전) 대표 이미지 URL
+  imageUrl String?
+
+  // 판매자
+  sellerId Int?
+  seller   User? @relation(fields: [sellerId], references: [id])
+
+  // 여러 장 이미지
+  images ProductImage[]
+  // ✅ 정규화된 식물 DB 연결 (선택)
+  // ❗중복 선언이 있었던 plantId/plant 를 여기 "1번만" 유지
+  plantId Int?
+  plant   Plant? @relation(fields: [plantId], references: [id], onDelete: SetNull)
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([plantId])
+  @@index([createdAt])
+  @@index([plantName])
+  @@index([region])
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// -----------------------
+// ✅ Plant DB (Product와 분리)
+// -----------------------
+
+model Plant {
+  id Int @id @default(autoincrement())
+
+  // 기존: 주 이름(한국어/통상명) - 고유
+  commonName String @unique
+
+  // 확장 필드
+  scientificName     String?
+  englishName        String?
+  category           String?
+  family             String?
+  generalDescription String?
+  folkUsageSummary   String?
+  toxicitySummary    String?
+  isProtected        Boolean  @default(false)
+  status             String   @default("DRAFT")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // ✅ 상품 상세 하단 섹션(“식물마다 다른 내용”)
+  effectsDetail      String? // 효능·효과 상세
+  healthyCookingTips String? // 건강에 좋은 조리법 상세
+  cautionsDetail     String? // 주의사항 상세
+
+  // 관계
+  products     Product[]
+  videos       PlantVideo[]
+  parts        PlantPart[]
+  conditions   PlantCondition[]
+  preparations PreparationMethod[]
+  regions      PlantRegion[]
+  seasons      Seasonality[]
+  safeties     PlantSafety[]
+  regulations  RegulationInfo[]
+  sources      PlantSource[]
+  tags         PlantTag[]
+
+  @@index([commonName])
+}
+
+model PlantVideo {
+  id        Int      @id @default(autoincrement())
+  plantId   Int
+  title     String
+  url       String
+  channel   String?
+  createdAt DateTime @default(now())
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// -----------------------
+// Condition(질환) / PlantCondition (추천/연관용)
+// -----------------------
+
+model Condition {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique // "DIABETES", "HYPERTENSION" 등
+  name        String // 예: 당뇨, 고혈압
+  description String?
+
+  plants    PlantCondition[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model PlantCondition {
+  id              Int     @id @default(autoincrement())
+  plantId         Int
+  conditionId     Int
+  evidenceLevel   String?
+  source          String?
+  note            String?
+  efficacySummary String?
+  usageNote       String?
+  confidenceScore Int?
+
+  plant     Plant     @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  condition Condition @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([plantId, conditionId])
+  @@index([plantId])
+  @@index([conditionId])
+}
+
+// -----------------------
+// 조리/섭취 방법
+// -----------------------
+
+model PreparationMethod {
+  id          Int     @id @default(autoincrement())
+  plantId     Int
+  methodType  String
+  title       String
+  description String?
+  dosage      String?
+  frequency   String?
+  caution     String?
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// -----------------------
+// Plant Part
+// -----------------------
+
+model PlantPart {
+  id          Int     @id @default(autoincrement())
+  plantId     Int
+  partType    String
+  description String?
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// -----------------------
+// 지역 / 식물-지역
+// -----------------------
+
+model Region {
+  id         Int     @id @default(autoincrement())
+  code       String  @unique
+  nameKo     String
+  nameEn     String?
+  regionType String?
+
+  plants PlantRegion[]
+}
+
+model PlantRegion {
+  id          Int     @id @default(autoincrement())
+  plantId     Int
+  regionId    Int
+  habitatNote String?
+
+  plant  Plant  @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  region Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@unique([plantId, regionId])
+  @@index([plantId])
+  @@index([regionId])
+}
+
+// -----------------------
+// 채집 가능 시기
+// -----------------------
+
+model Seasonality {
+  id         Int     @id @default(autoincrement())
+  plantId    Int
+  partType   String?
+  startMonth Int
+  endMonth   Int
+  seasonNote String?
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// -----------------------
+// 안전/독성 정보
+// -----------------------
+
+model PlantSafety {
+  id                Int     @id @default(autoincrement())
+  plantId           Int
+  toxicityLevel     String
+  toxicPart         String?
+  symptoms          String?
+  contraindications String?
+  maxDoseNote       String?
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// -----------------------
+// 법/규제 정보
+// -----------------------
+
+model RegulationInfo {
+  id                   Int     @id @default(autoincrement())
+  plantId              Int
+  jurisdiction         String
+  regNote              String?
+  labelingRestrictions String?
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId])
+}
+
+// -----------------------
+// 출처(공통) / 식물-출처
+// -----------------------
+
+model Source {
+  id        Int     @id @default(autoincrement())
+  title     String  @unique 
+  type      String?
+  reference String?
+  publisher String?
+  year      Int?
+
+  plants PlantSource[]
+}
+
+model PlantSource {
+  id       Int     @id @default(autoincrement())
+  plantId  Int
+  sourceId Int
+  note     String?
+
+  plant  Plant  @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([plantId, sourceId])
+  @@index([plantId])
+  @@index([sourceId])
+}
+
+// -----------------------
+// Tag(효능/키워드) / 식물-태그
+// -----------------------
+
+model Tag {
+  id       Int     @id @default(autoincrement())
+  code     String  @unique // "DIABETES", "IMMUNE" 등 추천용 코드도 여기에
+  labelKo  String
+  labelEn  String?
+  category String?
+
+  plants PlantTag[]
+}
+
+model PlantTag {
+  id      Int @id @default(autoincrement())
+  plantId Int
+  tagId   Int
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([plantId, tagId])
+  @@index([plantId])
+  @@index([tagId])
+}
+
+// -----------------------
+// 장바구니
+// -----------------------
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([productId])
+}
+
+// -----------------------
+// 주문
+// -----------------------
+
+model Order {
+  id         Int    @id @default(autoincrement())
+  buyerId    Int
+  status     String @default("PENDING")
+  totalPrice Int    @default(0)
+
+  shippingName     String
+  shippingPhone    String
+  shippingAddress1 String
+  shippingAddress2 String?
+  shippingZip      String?
+  requestMessage   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyer User        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@index([buyerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  productId    Int
+  sellerId     Int?
+  productTitle String
+  unitPrice    Int
+  quantity     Int
+  subtotal     Int 
+  createdAt    DateTime @default(now())
+
+  sellerStatus String @default("PENDING")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([sellerId])
+}
