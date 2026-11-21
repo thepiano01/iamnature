@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { won } from "@/lib/format";
+import AddressFields from "@/components/AddressFields";
 
 type D = { name: string; phone: string; zip: string; address1: string; address2: string };
 
@@ -44,20 +45,11 @@ export default function CheckoutForm({ defaults, total }: { defaults: D; total: 
             <input name="shippingPhone" defaultValue={defaults.phone} required inputMode="tel" placeholder="010-0000-0000" className="input" />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-          <div>
-            <label className="label">우편번호</label>
-            <input name="shippingZip" defaultValue={defaults.zip} className="input" />
-          </div>
-          <div>
-            <label className="label">주소</label>
-            <input name="shippingAddress1" defaultValue={defaults.address1} required className="input" />
-          </div>
-        </div>
-        <div>
-          <label className="label">상세 주소</label>
-          <input name="shippingAddress2" defaultValue={defaults.address2} className="input" />
-        </div>
+        <AddressFields
+          required
+          defaults={{ zip: defaults.zip, address1: defaults.address1, address2: defaults.address2 }}
+          names={{ zip: "shippingZip", address1: "shippingAddress1", address2: "shippingAddress2" }}
+        />
         <div>
           <label className="label">요청사항</label>
           <input name="requestMessage" placeholder="예: 문 앞에 놓아주세요" className="input" />

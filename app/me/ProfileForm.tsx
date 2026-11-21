@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import AddressFields from "@/components/AddressFields";
 
 type D = { name: string; phone: string; zip: string; address1: string; address2: string };
 
@@ -40,20 +41,7 @@ export default function ProfileForm({ defaults, canBecomeSeller }: { defaults: D
             <input name="phone" defaultValue={defaults.phone} className="input" />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-          <div>
-            <label className="label">우편번호</label>
-            <input name="zip" defaultValue={defaults.zip} className="input" />
-          </div>
-          <div>
-            <label className="label">주소</label>
-            <input name="address1" defaultValue={defaults.address1} className="input" />
-          </div>
-        </div>
-        <div>
-          <label className="label">상세 주소</label>
-          <input name="address2" defaultValue={defaults.address2} className="input" />
-        </div>
+        <AddressFields defaults={{ zip: defaults.zip, address1: defaults.address1, address2: defaults.address2 }} />
         <div className="flex items-center gap-3">
           <button className="btn-primary" disabled={pending}>저장</button>
           {msg && <span className="text-sm text-bark-500">{msg}</span>}
