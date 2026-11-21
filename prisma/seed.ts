@@ -235,11 +235,29 @@ async function main() {
     });
     sellerIds.push(u.id);
   }
-  // 관리자: 외부 공개 시 위험하므로 비밀번호를 무작위로 만들고 처음 한 번만 출력
+  // 관리자 계정
+  // - SEED_ADMIN_PASSWORD 환경변수가 있으면: 그 값으로 만들거나 비밀번호를 바꿈 (배포할 때마다 적용)
+  // - 없으면: 처음 한 번만 무작위 비밀번호로 만들고 로그에 출력
   let adminPw: string | null = null;
-  if (!(await prisma.user.findUnique({ where: { email: "admin@nature.kr" } }))) {
-    adminPw = process.env.SEED_ADMIN_PASSWORD || randomBytes(6).toString("base64url");
-    await prisma.user.create({ data: { email: "admin@nature.kr", name: "운영자", role: "ADMIN", passwordHash: await bcrypt.hash(adminPw!, 10) } });
+  let adminReset = false;
+  const envPw = process.env.SEED_ADMIN_PASSWORD?.trim();
+  const existingAdmin = await prisma.user.findUnique({ where: { email: "admin@nature.kr" } });
+  if (envPw) {
+    await prisma.user.upsert({
+      where: { email: "admin@nature.kr" },
+      update: { role: "ADMIN", suspended: false, passwordHash: await bcrypt.hash(envPw, 10) },
+      create: { email: "admin@nature.kr", name: "운영자", role: "ADMIN", passwordHash: await bcrypt.hash(envPw, 10) },
+    });
+    adminReset = true;
+  } else if (!existingAdmin) {
+    adminPw = randomBytes(6).toString("base64url");
+    await prisma.user.create({ data: { email: "admin@nature.kr", name: "운영자", role: "ADMIN", passwordHash: await bcrypt.hash(adminPw, 10) } });
+  }
+
+  // ADMIN_EMAILS 환경변수(쉼표 구분)에 적힌 회원은 관리자로 지정
+  for (const email of (process.env.ADMIN_EMAILS || "").split(",").map((x) => x.trim()).filter(Boolean)) {
+    const r = await prisma.user.updateMany({ where: { email }, data: { role: "ADMIN" } });
+    console.log(r.count ? `👑 ${email} → 관리자 지정` : `⚠️ ${email} 회원이 없습니다 (먼저 사이트에서 가입하세요)`);
   }
   await prisma.user.upsert({
     where: { email: "buyer@nature.kr" },
@@ -278,7 +296,9 @@ async function main() {
     });
   }
   console.log("✅ seed 완료 — 구매자 buyer@nature.kr / 채취자 seller1@nature.kr (비밀번호 password123)");
-  if (adminPw) {
+  if (adminReset) {
+    console.log("🔑 관리자 admin@nature.kr 비밀번호를 SEED_ADMIN_PASSWORD 값으로 설정했습니다.");
+  } else if (adminPw) {
     console.log("");
     console.log("🔑 관리자 계정이 새로 만들어졌습니다. 이 비밀번호는 다시 표시되지 않으니 꼭 적어두세요!");
     console.log(`   아이디: admin@nature.kr   비밀번호: ${adminPw}`);

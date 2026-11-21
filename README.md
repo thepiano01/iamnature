@@ -55,6 +55,10 @@ v1의 `prisma/dev.db`와 `public/uploads/` 폴더를 이 프로젝트의 같은 
 
 기존 회원을 관리자로 지정하려면: `npm run make-admin -- 이메일`
 
+**Vercel(배포 사이트)에서 관리자 비밀번호 바꾸기·관리자 지정**
+- `SEED_ADMIN_PASSWORD` 환경변수를 넣고 Redeploy → `admin@nature.kr` 비밀번호가 그 값으로 바뀜
+- `ADMIN_EMAILS` 환경변수(쉼표 구분)에 가입한 이메일을 넣고 Redeploy → 그 회원이 관리자가 됨
+
 ## v1 대비 달라진 점
 
 - **보안**: 로그인 정보를 localStorage에 두지 않고 HTTPOnly 쿠키 + 서버에서 DB 조회. API는 `userId`/`sellerId`를 클라이언트에서 받지 않고 세션에서 결정 (다른 판매자 주문·상품 수정 불가)
