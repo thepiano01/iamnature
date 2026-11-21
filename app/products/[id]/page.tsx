@@ -10,6 +10,7 @@ import Gallery from "@/components/Gallery";
 import BuyBox from "@/components/BuyBox";
 import { ProductGrid } from "@/components/ProductCard";
 import MatchRing from "@/components/MatchRing";
+import { creditOf } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +107,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
-        <Gallery images={images} title={p.title} category={plant?.category} />
+        <Gallery images={images} title={p.title} category={plant?.category} credits={images.map(creditOf)} />
 
         <div className="space-y-6">
           <div className="space-y-2">

@@ -4,7 +4,9 @@ import { useState } from "react";
 import ProductArt from "./ProductArt";
 import { cx } from "@/lib/format";
 
-export default function Gallery({ images, title, category }: { images: string[]; title: string; category?: string | null }) {
+type Credit = { author: string; license: string; source: string } | null;
+
+export default function Gallery({ images, title, category, credits = [] }: { images: string[]; title: string; category?: string | null; credits?: Credit[] }) {
   const [i, setI] = useState(0);
   if (!images.length) {
     return <ProductArt category={category} label={title} className="aspect-square w-full rounded-[2rem]" />;
@@ -22,6 +24,14 @@ export default function Gallery({ images, title, category }: { images: string[];
           </>
         )}
       </div>
+      {credits[i] && (
+        <p className="px-1 text-[10px] leading-snug text-bark-400">
+          사진: {credits[i]!.author} ·{" "}
+          <a href={credits[i]!.source} target="_blank" rel="noreferrer" className="underline hover:text-bark-700">
+            {credits[i]!.license} / Wikimedia Commons
+          </a>
+        </p>
+      )}
       {images.length > 1 && (
         <div className="no-scrollbar flex gap-2 overflow-x-auto">
           {images.map((src, idx) => (

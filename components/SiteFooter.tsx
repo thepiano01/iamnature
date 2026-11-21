@@ -22,6 +22,7 @@ export default function SiteFooter() {
           <ul className="space-y-2 text-bark-500">
             <li>평일 10:00 – 17:00</li>
             <li><Link href="/orders" className="hover:text-forest-700">주문·배송 조회</Link></li>
+            <li><Link href="/credits" className="hover:text-forest-700">사진 출처</Link></li>
           </ul>
         </div>
       </div>

@@ -295,6 +295,50 @@ async function main() {
       },
     });
   }
+  // 테스트용 실제 사진 (Wikimedia Commons, 자유 이용 라이선스) — 사진이 하나도 없는 샘플 상품에만 추가
+  const { readdirSync } = await import("fs");
+  const photoFiles = (() => {
+    try { return readdirSync("public/images/products"); } catch { return [] as string[]; }
+  })();
+  const photosOf = (key: string, from = 1, to = 99) =>
+    photoFiles
+      .filter((f) => new RegExp(`^${key}-(\\d+)\\.jpg$`).test(f))
+      .map((f) => ({ f, n: Number(f.match(/-(\d+)\.jpg$/)![1]) }))
+      .filter((x) => x.n >= from && x.n <= to)
+      .sort((a, b) => a.n - b.n)
+      .map((x) => `/images/products/${x.f}`);
+  const PHOTO_MAP: Record<string, string[]> = {
+    "태백 함백산 해발 800m 자연산 곰취": photosOf("gomchwi"),
+    "강원 고랭지 햇참취 (손으로 한 잎씩)": photosOf("chamchwi"),
+    "태백 깊은 골 엄나무순(개두릅)": photosOf("eomnamu"),
+    "겨울에 캔 태백 칡뿌리 슬라이스": photosOf("chik"),
+    "지리산 10년 이상 묵은 자연산 더덕": photosOf("deodeok"),
+    "지리산 산도라지 (5년근 이상)": photosOf("doraji"),
+    "함양 참나무 그루터기 자연산 영지": photosOf("yeongji"),
+    "지리산 오가피 줄기 (차용 손질)": photosOf("ogapi"),
+    "함양 쇠무릎(우슬) 뿌리": photosOf("useul"),
+    "지리산 계곡 자연산 오미자 (말린 것)": photosOf("omija"),
+    "울릉도 성인봉 자연산 명이나물": photosOf("sanmaneul", 1, 4),
+    "울릉 명이 간장 장아찌": [...photosOf("sanmaneul", 3, 99), ...photosOf("sanmaneul", 1, 2)].slice(0, 5),
+    "울릉 참나무 자연산 표고 (생)": photosOf("pyogo"),
+    "울릉 바위틈 돌나물": photosOf("dolnamul"),
+    "태백 참두릅 첫물": photosOf("dureup"),
+  };
+  let photoAdded = 0;
+  for (const [title, urls] of Object.entries(PHOTO_MAP)) {
+    if (!urls.length) continue;
+    const prods = await prisma.product.findMany({ where: { title }, include: { _count: { select: { images: true } } } });
+    for (const pr of prods) {
+      if (pr._count.images > 0) continue;
+      await prisma.product.update({
+        where: { id: pr.id },
+        data: { imageUrl: urls[0], images: { create: urls.map((url, i) => ({ url, isPrimary: i === 0 })) } },
+      });
+      photoAdded++;
+    }
+  }
+  if (photoAdded) console.log(`📷 샘플 상품 ${photoAdded}개에 사진 추가`);
+
   console.log("✅ seed 완료 — 구매자 buyer@nature.kr / 채취자 seller1@nature.kr (비밀번호 password123)");
   if (adminReset) {
     console.log("🔑 관리자 admin@nature.kr 비밀번호를 SEED_ADMIN_PASSWORD 값으로 설정했습니다.");
