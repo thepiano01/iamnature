@@ -10,13 +10,13 @@ import { EmptyState } from "@/components/ProductCard";
 export const metadata: Metadata = { title: "주문 내역" };
 export const dynamic = "force-dynamic";
 
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {
-  const { done } = await searchParams;
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ done?: string; reviewed?: string }> }) {
+  const { done, reviewed } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/orders");
   const orders = await prisma.order.findMany({
     where: { buyerId: user.id },
-    include: { items: true },
+    include: { items: { include: { review: { select: { id: true } } } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -30,6 +30,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <p className="font-serif text-xl font-bold text-forest-900">주문이 접수됐어요 🌿</p>
           <p className="mt-1 text-sm text-forest-800">채취자가 확인 후 산지에서 바로 손질해 보내드릴게요. (주문번호 #{done})</p>
         </div>
+      )}
+
+      {reviewed && (
+        <div className="mt-6 rounded-2xl bg-forest-50 p-4 text-sm font-semibold text-forest-800">후기를 남겨주셔서 고마워요 🌿 채취자에게 큰 힘이 돼요.</div>
       )}
 
       <div className="mt-8 space-y-4">
@@ -53,6 +57,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       <Link href={`/products/${i.productId}`} className="line-clamp-1 hover:underline">{i.productTitle} × {i.quantity}</Link>
                       <div className="flex shrink-0 items-center gap-3">
                         <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${ist.tone}`}>{ist.label}</span>
+                        {i.review ? (
+                          <span className="text-[11px] font-semibold text-bark-400">후기 완료</span>
+                        ) : (i.sellerStatus === "SHIPPED" || i.sellerStatus === "COMPLETED") ? (
+                          <Link href={`/orders/review/${i.id}`} className="rounded-lg bg-butter-100 px-2 py-1 text-[11px] font-bold text-bark-900 hover:bg-butter-500 hover:text-white">★ 후기 쓰기</Link>
+                        ) : null}
                         <span className="font-medium">{won(i.subtotal)}</span>
                       </div>
                     </li>

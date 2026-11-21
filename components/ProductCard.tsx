@@ -18,6 +18,7 @@ export type CardData = {
   plant?: { commonName: string; category: string | null; conditions: { condition: { code: string; name: string } }[] } | null;
   seller?: { name: string | null; sellerProfile: { farmName: string | null; verified: boolean } | null } | null;
   matched?: string[];
+  reviews?: { rating: number }[];
 };
 
 function Verified() {
@@ -36,6 +37,8 @@ export default function ProductCard({ p, highlight = [], compact = false }: { p:
   const harvested = daysAgo(p.harvestDate);
   const farm = p.seller?.sellerProfile?.farmName || p.seller?.name;
   const lowStock = p.quantity > 0 && p.quantity <= 3;
+  const rn = p.reviews?.length ?? 0;
+  const ravg = rn ? p.reviews!.reduce((a, r) => a + r.rating, 0) / rn : 0;
 
   return (
     <Link
@@ -68,6 +71,13 @@ export default function ProductCard({ p, highlight = [], compact = false }: { p:
           {p.region && <span>· {p.region}</span>}
         </div>
         <h3 className="line-clamp-2 text-[15px] font-bold leading-snug tracking-[-0.01em] text-bark-900">{p.title}</h3>
+        {rn > 0 && (
+          <p className="flex items-center gap-1 text-[11px] font-bold text-bark-700">
+            <span className="text-butter-500">★</span>
+            {ravg.toFixed(1)}
+            <span className="font-medium text-bark-400">({rn})</span>
+          </p>
+        )}
         {matched.length > 0 ? (
           <p className="text-[11px] font-bold text-clay-600">내 {matched.map(labelOf).join("·")}에 맞아요</p>
         ) : (

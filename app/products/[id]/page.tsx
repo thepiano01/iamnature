@@ -11,6 +11,10 @@ import BuyBox from "@/components/BuyBox";
 import { ProductGrid } from "@/components/ProductCard";
 import MatchRing from "@/components/MatchRing";
 import { creditOf } from "@/lib/credits";
+import { sellerStats } from "@/lib/sellerStats";
+import { summarize } from "@/lib/reviews";
+import TrustTemp, { Stars } from "@/components/TrustTemp";
+import ReviewList, { PraiseTags, RatingSummary } from "@/components/ReviewList";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +76,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   if (!p) notFound();
   if (p.hidden && user?.id !== p.sellerId && user?.role !== "ADMIN") notFound();
 
+  const [reviews, stats] = await Promise.all([
+    prisma.review.findMany({ where: { productId: p.id, hidden: false }, include: { buyer: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 30 }),
+    p.sellerId ? sellerStats(p.sellerId) : null,
+  ]);
+  const rs = summarize(reviews);
   const plant = p.plant;
   const myCodes = codesFromUser(user);
   const matched = plant?.conditions.filter((c) => myCodes.includes(c.condition.code as never)) ?? [];
@@ -83,6 +92,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   const toc = [
     ["desc", "상품 설명"],
+    ["reviews", `후기 ${rs.n}`],
     plant?.conditions.length ? ["health", "건강상태별 정보"] : null,
     plant?.healthyCookingTips || plant?.preparations.length ? ["cook", "손질·조리법"] : null,
     plant?.cautionsDetail || plant?.toxicitySummary || plant?.safeties.length ? ["caution", "주의사항"] : null,
@@ -116,6 +126,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               {p.harvestDate && <span className="rounded-full bg-clay-50 px-2.5 py-1 font-semibold text-clay-700">{daysAgo(p.harvestDate)}</span>}
             </div>
             <h1 className="h-serif text-[26px] leading-snug sm:text-[32px]">{p.title}</h1>
+            {rs.n > 0 && (
+              <a href="#reviews" className="inline-flex items-center gap-1.5 text-sm">
+                <Stars value={rs.avg} />
+                <b className="text-bark-900">{rs.avg.toFixed(1)}</b>
+                <span className="text-bark-400 underline">후기 {rs.n}개</span>
+              </a>
+            )}
             <p className="pt-1">
               <span className="text-3xl font-extrabold tracking-[-0.02em] text-bark-900">{won(p.price)}</span>
               <span className="ml-1.5 text-sm text-bark-500">/ {p.unit}</span>
@@ -149,16 +166,19 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           <BuyBox productId={p.id} price={p.price} unit={p.unit} stock={p.quantity} loggedIn={!!user} own={!!user && user.id === p.sellerId} />
 
-          <div className="flex items-center gap-3 rounded-[1.5rem] bg-white p-4 ring-1 ring-hanji-200">
+          <Link href={`/sellers/${p.sellerId}`} className="flex items-center gap-3 rounded-[1.5rem] bg-white p-4 ring-1 ring-hanji-200 transition hover:ring-forest-600">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-forest-500 to-forest-800 text-lg font-extrabold text-white">{farm.slice(0, 1)}</div>
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 font-semibold text-bark-900">
-                {farm}
-                {p.seller?.sellerProfile?.verified && <span className="rounded-full bg-forest-100 px-2 py-0.5 text-[10px] font-bold text-forest-800">인증 채취자</span>}
+                <span className="truncate">{farm}</span>
+                {p.seller?.sellerProfile?.verified && <span className="shrink-0 rounded-full bg-forest-100 px-2 py-0.5 text-[10px] font-bold text-forest-800">인증 채취자</span>}
               </p>
-              <p className="text-xs text-bark-500">등록 상품 {p.seller?._count.products ?? 0}개</p>
+              <p className="text-xs text-bark-500">
+                거래 {stats?.completed ?? 0}회 · 후기 {stats?.n ?? 0}개 · 상품 {p.seller?._count.products ?? 0}개
+              </p>
             </div>
-          </div>
+            {stats && <TrustTemp temp={stats.temp} size="sm" />}
+          </Link>
         </div>
       </div>
 
@@ -196,6 +216,19 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 </div>
               </div>
             ) : null}
+          </div>
+        </Block>
+
+        <Block id="reviews" title={`구매 후기 ${rs.n}`}>
+          <div className="space-y-5">
+            {rs.n > 0 && <RatingSummary avg={rs.avg} n={rs.n} dist={rs.dist} />}
+            {rs.goodTags.length > 0 && (
+              <div>
+                <p className="mb-2 text-sm font-bold text-bark-700">구매자들이 꼽은 장점</p>
+                <PraiseTags tags={rs.goodTags} />
+              </div>
+            )}
+            <ReviewList reviews={reviews} />
           </div>
         </Block>
 

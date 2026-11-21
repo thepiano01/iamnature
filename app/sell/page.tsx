@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { sellerPage } from "@/lib/auth";
 import { ORDER_STATUS } from "@/lib/health";
 import { won, ymd } from "@/lib/format";
+import { sellerStats } from "@/lib/sellerStats";
+import TrustTemp from "@/components/TrustTemp";
+import ReviewList from "@/components/ReviewList";
 
 export const metadata: Metadata = { title: "채취자 센터" };
 export const dynamic = "force-dynamic";
@@ -16,6 +19,10 @@ export default async function SellDashboard() {
     prisma.product.findMany({ where: { sellerId: me.id }, select: { id: true, title: true, quantity: true, unit: true } }),
   ]);
 
+  const [stats, myReviews] = await Promise.all([
+    sellerStats(me.id),
+    prisma.review.findMany({ where: { sellerId: me.id, hidden: false }, include: { buyer: { select: { name: true } }, product: { select: { id: true, title: true } } }, orderBy: { createdAt: "desc" }, take: 3 }),
+  ]);
   const valid = items.filter((i) => i.sellerStatus !== "CANCELLED");
   const monthSales = valid.filter((i) => i.createdAt >= monthStart).reduce((s, i) => s + i.subtotal, 0);
   const totalSales = valid.reduce((s, i) => s + i.subtotal, 0);
@@ -50,6 +57,17 @@ export default async function SellDashboard() {
           </div>
         ))}
       </div>
+
+      <section className="card flex flex-wrap items-center justify-between gap-4 p-5">
+        <div>
+          <p className="text-xs font-bold text-bark-400">내 신뢰 온도</p>
+          <p className="mt-1 text-sm text-bark-500">
+            거래 {stats.completed}회 · 후기 {stats.n}개{stats.n ? ` · 평균 ★${stats.avg.toFixed(1)}` : ""}
+          </p>
+          <Link href={`/sellers/${me.id}`} className="mt-2 inline-block text-xs font-bold text-forest-700 hover:underline">구매자에게 보이는 내 프로필 →</Link>
+        </div>
+        <TrustTemp temp={stats.temp} />
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
         <section className="card p-5">
@@ -96,6 +114,13 @@ export default async function SellDashboard() {
           )}
         </section>
       </div>
+      <section className="card p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-bold">최근 받은 후기</h2>
+          <Link href={`/sellers/${me.id}`} className="text-xs font-semibold text-forest-700 hover:underline">전체 보기 →</Link>
+        </div>
+        <ReviewList reviews={myReviews} showProduct />
+      </section>
     </div>
   );
 }

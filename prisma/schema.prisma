@@ -39,6 +39,8 @@ model User {
   products      Product[]
   cartItems     CartItem[]
   orders        Order[]
+  reviewsWritten  Review[] @relation("ReviewBuyer")
+  reviewsReceived Review[] @relation("ReviewSeller")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,6 +98,7 @@ model Product {
 
   cartItems  CartItem[]
   orderItems OrderItem[]
+  reviews    Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -442,8 +445,32 @@ model OrderItem {
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  review  Review?
 
   @@index([orderId])
+  @@index([productId])
+  @@index([sellerId])
+}
+
+/// 구매 후기 — 주문 상품 1건당 1개
+model Review {
+  id          Int      @id @default(autoincrement())
+  orderItemId Int      @unique
+  productId   Int
+  buyerId     Int
+  sellerId    Int
+  rating      Int // 1~5
+  tags        String   @default("") // 쉼표 구분 (예: "신선해요,포장이 꼼꼼해요")
+  content     String?
+  photos      String   @default("") // 쉼표 구분 이미지 주소
+  hidden      Boolean  @default(false) // 관리자 숨김
+  createdAt   DateTime @default(now())
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer     User      @relation("ReviewBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller    User      @relation("ReviewSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
   @@index([productId])
   @@index([sellerId])
 }

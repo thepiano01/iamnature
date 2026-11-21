@@ -15,6 +15,7 @@ export const cardInclude = {
     },
   },
   seller: { select: { id: true, name: true, sellerProfile: { select: { farmName: true, verified: true } } } },
+  reviews: { where: { hidden: false }, select: { rating: true } },
 } satisfies Prisma.ProductInclude;
 
 export type CardProduct = Prisma.ProductGetPayload<{ include: typeof cardInclude }>;

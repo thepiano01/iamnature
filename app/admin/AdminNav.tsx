@@ -10,6 +10,7 @@ const ITEMS = [
   ["/admin/users", "회원 관리"],
   ["/admin/products", "상품 관리"],
   ["/admin/orders", "주문 관리"],
+  ["/admin/reviews", "후기 관리"],
   ["/admin/plants", "식물·효능 DB"],
   ["/", "← 쇼핑몰로"],
 ] as const;

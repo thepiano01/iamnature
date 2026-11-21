@@ -339,6 +339,52 @@ async function main() {
   }
   if (photoAdded) console.log(`📷 샘플 상품 ${photoAdded}개에 사진 추가`);
 
+  // 샘플 후기 — 후기가 하나도 없을 때만 (샘플 구매자들의 배송완료 주문 + 후기)
+  if ((await prisma.review.count()) === 0) {
+    const reviewers = [
+      { email: "review1@nature.kr", name: "김정숙" },
+      { email: "review2@nature.kr", name: "이영호" },
+      { email: "review3@nature.kr", name: "박미란" },
+      { email: "review4@nature.kr", name: "최동훈" },
+      { email: "review5@nature.kr", name: "정은비" },
+    ];
+    const rIds: number[] = [];
+    for (const r of reviewers) {
+      const u = await prisma.user.upsert({ where: { email: r.email }, update: {}, create: { email: r.email, name: r.name, role: "BUYER", passwordHash: await bcrypt.hash(randomBytes(12).toString("hex"), 10) } });
+      rIds.push(u.id);
+    }
+    const TEXTS: [number, string, string][] = [
+      [5, "신선해요,향이 진해요,또 살게요", "산에서 바로 캔 게 느껴질 만큼 향이 진하네요. 데쳐서 들기름에 무쳤더니 식구들이 다 좋아했어요."],
+      [5, "손질이 깔끔해요,포장이 꼼꼼해요,배송이 빨라요", "흙이나 잡티 없이 깔끔하게 손질돼서 왔어요. 아이스팩까지 넣어주셔서 상태가 아주 좋았습니다."],
+      [4, "신선해요,양이 넉넉해요", "양이 생각보다 많아서 이웃이랑 나눠 먹었어요. 다음 철에도 주문할게요."],
+      [5, "설명과 같아요,친절해요,또 살게요", "채취 날짜 적어주신 그대로 다음 날 받았어요. 문의 드렸더니 보관법까지 친절하게 알려주셨어요."],
+      [4, "향이 진해요,포장이 꼼꼼해요", "마트 것과는 향부터 달라요. 다만 몇 잎은 조금 작았는데 맛은 정말 좋았어요."],
+      [5, "신선해요,손질이 깔끔해요,설명과 같아요", "부모님 드리려고 샀는데 너무 좋아하세요. 자연산이라 그런지 씹는 맛이 살아 있어요."],
+      [3, "배송이 빨라요", "무난했어요. 개인적으로는 조금 더 어린 순이었으면 좋겠어요."],
+    ];
+    const prods = await prisma.product.findMany({ where: { sellerId: { in: sellerIds } }, orderBy: { id: "asc" } });
+    let k = 0;
+    for (const pr of prods) {
+      const cnt = 2 + (pr.id % 3); // 상품당 2~4개
+      for (let j = 0; j < cnt; j++, k++) {
+        const [rating, tags, content] = TEXTS[k % TEXTS.length];
+        const buyerId = rIds[(k + j) % rIds.length];
+        const when = new Date(Date.now() - (3 + ((k * 7) % 40)) * 86400000);
+        const order = await prisma.order.create({
+          data: {
+            buyerId, status: "COMPLETED", totalPrice: pr.price, shippingName: "샘플", shippingPhone: "010-0000-0000", shippingAddress1: "샘플 주소", createdAt: when,
+            items: { create: { productId: pr.id, sellerId: pr.sellerId, productTitle: pr.title, unitPrice: pr.price, quantity: 1, subtotal: pr.price, sellerStatus: "COMPLETED", createdAt: when } },
+          },
+          include: { items: true },
+        });
+        await prisma.review.create({
+          data: { orderItemId: order.items[0].id, productId: pr.id, buyerId, sellerId: pr.sellerId!, rating, tags, content, createdAt: new Date(when.getTime() + 2 * 86400000) },
+        });
+      }
+    }
+    console.log(`⭐ 샘플 후기 ${k}개 추가`);
+  }
+
   console.log("✅ seed 완료 — 구매자 buyer@nature.kr / 채취자 seller1@nature.kr (비밀번호 password123)");
   if (adminReset) {
     console.log("🔑 관리자 admin@nature.kr 비밀번호를 SEED_ADMIN_PASSWORD 값으로 설정했습니다.");
