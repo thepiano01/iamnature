@@ -12,7 +12,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import MatchRing from "@/components/MatchRing";
 import { creditOf } from "@/lib/credits";
 import { sellerStats } from "@/lib/sellerStats";
-import { summarize } from "@/lib/reviews";
+import { summarize, tempTone } from "@/lib/reviews";
 import TrustTemp, { Stars } from "@/components/TrustTemp";
 import ReviewList, { PraiseTags, RatingSummary } from "@/components/ReviewList";
 
@@ -99,14 +99,36 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     plant?.videos.length ? ["video", "영상"] : null,
   ].filter(Boolean) as [string, string][];
 
+  const tone = stats ? tempTone(stats.temp) : null;
   const facts = [
+    [
+      "채취자",
+      <Link key="farm" href={`/sellers/${p.sellerId}`} className="group inline-flex flex-wrap items-center gap-1.5">
+        <span className="font-bold text-bark-900 underline decoration-hanji-300 underline-offset-4 group-hover:decoration-forest-600">{farm}</span>
+        {p.seller?.sellerProfile?.verified && <span className="rounded-full bg-forest-100 px-2 py-0.5 text-[10px] font-bold text-forest-800">✓ 인증</span>}
+        <span className="text-bark-400">›</span>
+      </Link>,
+    ],
+    stats && tone
+      ? [
+          "신뢰 온도",
+          <span key="temp" className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <b style={{ color: tone.color }}>
+              {stats.temp.toFixed(1)}°C {tone.face}
+            </b>
+            <span className="text-xs text-bark-400">
+              거래 {stats.completed}회 · 후기 {stats.n}개{stats.n ? ` · ★${stats.avg.toFixed(1)}` : ""}
+            </span>
+          </span>,
+        ]
+      : null,
     ["채취 산지", p.region],
     ["채취일", p.harvestDate ? `${ymd(p.harvestDate)} (${daysAgo(p.harvestDate)})` : null],
     ["상태", p.formState],
     ["판매 단위", p.unit],
     ["남은 수량", `${p.quantity}${p.unit}`],
     plant?.scientificName ? ["학명", plant.scientificName] : null,
-  ].filter((x) => x && x[1]) as [string, string][];
+  ].filter((x) => x && x[1]) as [string, React.ReactNode][];
 
   return (
     <div className="container-x pt-6 sm:pt-10">

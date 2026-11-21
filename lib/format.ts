@@ -1,15 +1,21 @@
 export const won = (n: number | null | undefined) => `${(n ?? 0).toLocaleString("ko-KR")}원`;
 
+// 날짜는 항상 한국 시간(KST, UTC+9) 기준 — 서버(Vercel)가 UTC여도 같은 날짜가 나오도록
+const KST = 9 * 3600 * 1000;
+const DAY = 86400000;
+const toDate = (d: Date | string) => (typeof d === "string" ? new Date(d) : d);
+const kstDayNo = (t: number) => Math.floor((t + KST) / DAY);
+
 export function ymd(d?: Date | string | null) {
   if (!d) return "";
-  const x = typeof d === "string" ? new Date(d) : d;
-  return `${x.getFullYear()}.${String(x.getMonth() + 1).padStart(2, "0")}.${String(x.getDate()).padStart(2, "0")}`;
+  const k = new Date(toDate(d).getTime() + KST);
+  return `${k.getUTCFullYear()}.${String(k.getUTCMonth() + 1).padStart(2, "0")}.${String(k.getUTCDate()).padStart(2, "0")}`;
 }
 
 export function daysAgo(d?: Date | string | null) {
   if (!d) return null;
-  const x = typeof d === "string" ? new Date(d) : d;
-  const diff = Math.floor((Date.now() - x.getTime()) / 86400000);
+  const x = toDate(d);
+  const diff = kstDayNo(Date.now()) - kstDayNo(x.getTime());
   if (diff <= 0) return "오늘 채취";
   if (diff === 1) return "어제 채취";
   if (diff < 30) return `${diff}일 전 채취`;
