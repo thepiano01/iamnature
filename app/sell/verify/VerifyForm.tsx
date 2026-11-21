@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { uploadImage } from "@/lib/compressImage";
 
 type V = { farmName: string; businessNumber: string; permitImage: string; idCardImage: string };
 
@@ -22,19 +23,19 @@ function Uploader({ label, desc, value, onChange }: { label: string; desc: strin
       {err && <span className="mt-1 block text-xs text-rose-600">{err}</span>}
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         hidden
         onChange={async (e) => {
           const f = e.target.files?.[0];
           if (!f) return;
           setBusy(true);
           setErr(null);
-          const fd = new FormData();
-          fd.append("file", f);
-          const data = await fetch("/api/upload", { method: "POST", body: fd }).then((r) => r.json()).catch(() => ({}));
+          try {
+            onChange(await uploadImage(f));
+          } catch (e) {
+            setErr((e as Error).message);
+          }
           setBusy(false);
-          if (data.ok) onChange(data.url);
-          else setErr(data.error || "업로드 실패");
         }}
       />
     </label>

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FORM_STATES, UNITS } from "@/lib/health";
 import { cx } from "@/lib/format";
+import { uploadImage } from "@/lib/compressImage";
 
 export type PlantOption = { id: number; commonName: string; category: string | null; conditions: string[] };
 export type ProductValues = {
@@ -51,12 +52,11 @@ export default function ProductForm({ plants, initial }: { plants: PlantOption[]
     setErr(null);
     const urls: string[] = [];
     for (const f of Array.from(files).slice(0, 10 - v.images.length)) {
-      const fd = new FormData();
-      fd.append("file", f);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (data.ok) urls.push(data.url);
-      else setErr(data.error || "업로드 실패");
+      try {
+        urls.push(await uploadImage(f));
+      } catch (e) {
+        setErr((e as Error).message);
+      }
     }
     setV((p) => ({ ...p, images: [...p.images, ...urls] }));
     setUploading(false);
@@ -119,7 +119,7 @@ export default function ProductForm({ plants, initial }: { plants: PlantOption[]
             </button>
           )}
         </div>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => upload(e.target.files)} />
+        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
       </section>
 
       {/* 기본 정보 */}

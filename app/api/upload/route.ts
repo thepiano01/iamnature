@@ -18,7 +18,7 @@ export const POST = (req: Request) =>
     const file = (await req.formData()).get("file");
     if (!(file instanceof File)) return fail("파일이 없습니다.");
     const ext = ALLOWED[file.type];
-    if (!ext) return fail("JPG, PNG, WEBP 이미지만 올릴 수 있어요.");
+    if (!ext) return fail("JPG, PNG, WEBP 사진만 올릴 수 있어요. (아이폰 HEIC는 설정 > 카메라 > 포맷 > ‘높은 호환성’으로 바꿔주세요)");
     if (file.size > MAX) return fail("이미지는 8MB 이하만 올릴 수 있어요.");
     const name = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.${ext}`;
 
