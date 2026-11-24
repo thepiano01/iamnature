@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProductArt from "./ProductArt";
 import MatchRing from "./MatchRing";
+import CardCarousel from "./CardCarousel";
 import { daysAgo, won } from "@/lib/format";
 import { categoryLabel, labelOf } from "@/lib/health";
 
@@ -30,7 +31,7 @@ function Verified() {
 }
 
 export default function ProductCard({ p, highlight = [], compact = false }: { p: CardData; highlight?: string[]; compact?: boolean }) {
-  const img = p.images?.[0]?.url || p.imageUrl;
+  const imgs = p.images?.length ? p.images.map((i) => i.url) : p.imageUrl ? [p.imageUrl] : [];
   const conds = p.plant?.conditions.map((c) => c.condition) ?? [];
   const matched = p.matched ?? conds.filter((c) => highlight.includes(c.code)).map((c) => c.code);
   const pct = highlight.length ? Math.round((matched.length / highlight.length) * 100) : 0;
@@ -46,22 +47,21 @@ export default function ProductCard({ p, highlight = [], compact = false }: { p:
       className={`group flex flex-col rounded-[var(--radius-card)] bg-white p-2 shadow-[var(--shadow-card)] ring-1 ring-hanji-200/70 transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] ${compact ? "w-[236px] shrink-0 snap-start" : ""}`}
     >
       <div className="relative aspect-square overflow-hidden rounded-[1.25rem] bg-hanji-100">
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={p.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+        {imgs.length ? (
+          <CardCarousel images={imgs} alt={p.title} />
         ) : (
           <ProductArt category={p.plant?.category} label={p.title} className="h-full w-full transition duration-500 group-hover:scale-105" />
         )}
         {harvested && (
-          <span className="glass absolute left-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-bold text-forest-800">🌱 {harvested}</span>
+          <span className="glass pointer-events-none absolute left-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-bold text-forest-800">🌱 {harvested}</span>
         )}
         {matched.length > 0 && pct > 0 && (
-          <span className="glass absolute right-2 top-2 rounded-full p-0.5 shadow-sm">
+          <span className="glass pointer-events-none absolute right-2 top-2 rounded-full p-0.5 shadow-sm">
             <MatchRing value={pct} size={38} stroke={4} tone="peach" />
           </span>
         )}
         {lowStock && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-bark-900/80 px-2.5 py-1 text-[10px] font-bold text-white">{p.quantity}{p.unit} 남음</span>
+          <span className="pointer-events-none absolute bottom-6 left-2 rounded-full bg-bark-900/80 px-2.5 py-1 text-[10px] font-bold text-white">{p.quantity}{p.unit} 남음</span>
         )}
       </div>
 
