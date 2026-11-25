@@ -9,6 +9,7 @@ const ITEMS = [
   ["/sell/products", "내 상품"],
   ["/sell/products/new", "+ 상품 올리기"],
   ["/sell/orders", "주문 관리"],
+  ["/sell/wants", "🙋 구매 요청"],
   ["/sell/verify", "채취자 인증"],
   ["/", "← 쇼핑몰로"],
 ] as const;

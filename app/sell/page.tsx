@@ -19,6 +19,7 @@ export default async function SellDashboard() {
     prisma.product.findMany({ where: { sellerId: me.id }, select: { id: true, title: true, quantity: true, unit: true } }),
   ]);
 
+  const newWants = await prisma.wantRequest.count({ where: { status: "OPEN", targets: { some: { sellerId: me.id } }, offers: { none: { sellerId: me.id } } } });
   const [stats, myReviews] = await Promise.all([
     sellerStats(me.id),
     prisma.review.findMany({ where: { sellerId: me.id, hidden: false }, include: { buyer: { select: { name: true } }, product: { select: { id: true, title: true } } }, orderBy: { createdAt: "desc" }, take: 3 }),
@@ -57,6 +58,16 @@ export default async function SellDashboard() {
           </div>
         ))}
       </div>
+
+      {newWants > 0 && (
+        <Link href="/sell/wants" className="flex items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-butter-100 to-clay-50 p-5 transition hover:shadow-[var(--shadow-card)]">
+          <span>
+            <span className="block text-lg font-extrabold text-bark-900">🙋 나에게 온 구매 요청 {newWants}건</span>
+            <span className="text-sm text-bark-500">회원님이 팔았거나 팔고 있는 품목을 찾는 구매자가 있어요. 제안을 보내보세요.</span>
+          </span>
+          <span className="shrink-0 font-bold text-clay-600">보러 가기 →</span>
+        </Link>
+      )}
 
       <section className="card flex flex-wrap items-center justify-between gap-4 p-5">
         <div>

@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "홈" },
   { href: "/match", label: "건강 매칭" },
   { href: "/products", label: "둘러보기" },
+  { href: "/wants", label: "구해요" },
 ];
 
 export function NavLinks() {

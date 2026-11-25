@@ -41,6 +41,10 @@ model User {
   orders        Order[]
   reviewsWritten  Review[] @relation("ReviewBuyer")
   reviewsReceived Review[] @relation("ReviewSeller")
+  wantRequests    WantRequest[]
+  wantTargets     WantTarget[]
+  wantOffers      WantOffer[]
+  notifications   Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -473,4 +477,76 @@ model Review {
 
   @@index([productId])
   @@index([sellerId])
+}
+
+/// 구해요 — 구매자가 원하는 품목 요청
+model WantRequest {
+  id        Int       @id @default(autoincrement())
+  buyerId   Int
+  plantId   Int?
+  keyword   String // 품목 이름 (예: 송이버섯)
+  quantity  Int       @default(1)
+  unit      String    @default("kg")
+  budget    Int? // 희망 가격 (단위당, 원)
+  neededBy  DateTime? // 언제까지 필요한지
+  region    String? // 받는 지역 (예: 서울 강남)
+  note      String?
+  status    String    @default("OPEN") // OPEN | MATCHED | CLOSED
+  createdAt DateTime  @default(now())
+
+  buyer   User         @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  targets WantTarget[]
+  offers  WantOffer[]
+
+  @@index([status])
+  @@index([buyerId])
+}
+
+/// 요청을 받은 채취자 (맞춤 전달 대상과 이유)
+model WantTarget {
+  id        Int      @id @default(autoincrement())
+  requestId Int
+  sellerId  Int
+  reason    String // SOLD(판매 이력) | LISTING(판매 중) | CATEGORY(비슷한 품목)
+  createdAt DateTime @default(now())
+
+  request WantRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  seller  User        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, sellerId])
+  @@index([sellerId])
+}
+
+/// 채취자의 제안
+model WantOffer {
+  id        Int      @id @default(autoincrement())
+  requestId Int
+  sellerId  Int
+  price     Int // 단위당 가격
+  quantity  Int
+  unit      String
+  message   String?
+  productId Int? // 연결된 상품 (있으면 바로 구매 가능)
+  status    String   @default("SENT") // SENT | ACCEPTED | DECLINED
+  createdAt DateTime @default(now())
+
+  request WantRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  seller  User        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, sellerId])
+}
+
+/// 사이트 안 알림
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
 }

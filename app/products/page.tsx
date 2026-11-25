@@ -105,7 +105,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
       {items.length ? (
         <ProductGrid items={items} highlight={codes.length ? codes : myCodes} />
       ) : (
-        <EmptyState title="조건에 맞는 상품이 없어요" desc="필터를 줄이거나 다른 이름으로 검색해 보세요." action={<Link href="/products" className="btn-ghost btn-sm">필터 초기화</Link>} />
+        <EmptyState
+          title={q ? `‘${q}’ 상품이 아직 없어요` : "조건에 맞는 상품이 없어요"}
+          desc={q ? "구해요를 올리면 이 품목을 팔아본 채취자에게 바로 알려드려요." : "필터를 줄이거나 다른 이름으로 검색해 보세요."}
+          action={
+            <div className="flex gap-2">
+              {q && <Link href={`/wants/new?q=${encodeURIComponent(q)}`} className="btn-accent btn-sm">🙋 ‘{q}’ 구해요 올리기</Link>}
+              <Link href="/products" className="btn-ghost btn-sm">필터 초기화</Link>
+            </div>
+          }
+        />
       )}
     </div>
   );

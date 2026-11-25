@@ -385,6 +385,35 @@ async function main() {
     console.log(`⭐ 샘플 후기 ${k}개 추가`);
   }
 
+  // 샘플 구해요 — 요청이 하나도 없을 때만
+  if ((await prisma.wantRequest.count()) === 0) {
+    const asker = await prisma.user.findUnique({ where: { email: "review1@nature.kr" } });
+    const asker2 = await prisma.user.findUnique({ where: { email: "review3@nature.kr" } });
+    if (asker && asker2) {
+      const sellerOfPlant = async (name: string) =>
+        (await prisma.product.findMany({ where: { plant: { commonName: name } }, select: { sellerId: true }, distinct: ["sellerId"] })).map((x) => x.sellerId!).filter(Boolean);
+      const day = 86400000;
+      const mk = async (buyerId: number, keyword: string, data: { quantity: number; unit: string; budget?: number; days?: number; region?: string; note?: string }, targets: { ids: number[]; reason: string }) => {
+        const w = await prisma.wantRequest.create({
+          data: { buyerId, keyword, quantity: data.quantity, unit: data.unit, budget: data.budget ?? null, neededBy: data.days ? new Date(Date.now() + data.days * day) : null, region: data.region ?? null, note: data.note ?? null, plantId: (await prisma.plant.findUnique({ where: { commonName: keyword } }))?.id ?? null },
+        });
+        if (targets.ids.length) await prisma.wantTarget.createMany({ data: targets.ids.map((sellerId) => ({ requestId: w.id, sellerId, reason: targets.reason })) });
+        return w;
+      };
+      const w1 = await mk(asker.id, "곰취", { quantity: 3, unit: "kg", budget: 27000, days: 10, region: "서울 송파구", note: "장아찌 담그려고 해요. 잎이 너무 크지 않은 걸로 부탁드려요." }, { ids: await sellerOfPlant("곰취"), reason: "SOLD" });
+      const mushroomSellers = (await prisma.product.findMany({ where: { plant: { category: "MUSHROOM" } }, select: { sellerId: true }, distinct: ["sellerId"] })).map((x) => x.sellerId!).filter(Boolean);
+      await mk(asker2.id, "송이버섯", { quantity: 1, unit: "kg", days: 20, region: "경기 성남시", note: "부모님 선물용이에요. 갓이 덜 핀 상품(上品)으로 구해요." }, { ids: mushroomSellers, reason: "CATEGORY" });
+      const deodeokSellers = await sellerOfPlant("더덕");
+      const w3 = await mk(asker.id, "더덕", { quantity: 2, unit: "kg", budget: 60000, region: "대전 유성구" }, { ids: deodeokSellers, reason: "SOLD" });
+      const deodeok = await prisma.product.findFirst({ where: { plant: { commonName: "더덕" } } });
+      if (deodeok?.sellerId) {
+        await prisma.wantOffer.create({ data: { requestId: w3.id, sellerId: deodeok.sellerId, price: 62000, quantity: 2, unit: "kg", productId: deodeok.id, message: "이번 주에 캔 10년 이상 묵은 더덕이에요. 흙 털고 바로 보내드릴게요." } });
+      }
+      void w1;
+      console.log("🙋 샘플 구해요 3건 추가");
+    }
+  }
+
   console.log("✅ seed 완료 — 구매자 buyer@nature.kr / 채취자 seller1@nature.kr (비밀번호 password123)");
   if (adminReset) {
     console.log("🔑 관리자 admin@nature.kr 비밀번호를 SEED_ADMIN_PASSWORD 값으로 설정했습니다.");

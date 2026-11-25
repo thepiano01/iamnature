@@ -32,6 +32,17 @@ export default async function MePage() {
         <LogoutButton />
       </div>
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Link href="/wants?s=ALL&mine=1" className="card p-4 text-center hover:border-forest-300">
+          <p className="text-2xl font-extrabold text-forest-800">🙋</p>
+          <p className="text-xs text-bark-500">내 구해요</p>
+        </Link>
+        <Link href="/notifications" className="card p-4 text-center hover:border-forest-300">
+          <p className="text-2xl font-extrabold text-forest-800">🔔</p>
+          <p className="text-xs text-bark-500">알림</p>
+        </Link>
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         <Link href="/orders" className="card p-4 text-center hover:border-forest-300">
           <p className="font-serif text-2xl font-bold text-forest-900">{orderCount}</p>

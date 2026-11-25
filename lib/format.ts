@@ -22,6 +22,17 @@ export function daysAgo(d?: Date | string | null) {
   return `${ymd(x)} 채취`;
 }
 
+export function timeAgo(d?: Date | string | null) {
+  if (!d) return "";
+  const m = Math.floor((Date.now() - toDate(d).getTime()) / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  if (m < 1440) return `${Math.floor(m / 60)}시간 전`;
+  const days = kstDayNo(Date.now()) - kstDayNo(toDate(d).getTime());
+  if (days < 7) return `${days}일 전`;
+  return ymd(d);
+}
+
 export function cx(...a: Array<string | false | null | undefined>) {
   return a.filter(Boolean).join(" ");
 }

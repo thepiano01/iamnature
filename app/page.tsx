@@ -6,6 +6,7 @@ import { CATEGORIES, HEALTH, codesFromUser } from "@/lib/health";
 import HealthPicker from "@/components/HealthPicker";
 import MatchRing, { RING_TONES } from "@/components/MatchRing";
 import { EmptyState, ProductGrid, ProductRail } from "@/components/ProductCard";
+import WantCard from "@/components/WantCard";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,12 @@ export default async function Home() {
     Promise.all(CATEGORIES.map((c) => prisma.product.count({ where: { hidden: false, quantity: { gt: 0 }, plant: { category: c.code } } }))),
     prisma.seasonality.findMany({ include: { plant: { select: { commonName: true } } } }),
   ]);
+  const wants = await prisma.wantRequest.findMany({
+    where: { status: "OPEN" },
+    include: { buyer: { select: { name: true } }, _count: { select: { offers: true, targets: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
 
   const inSeason = Array.from(
     new Set(
@@ -173,6 +180,19 @@ export default async function Home() {
       <section className="container-x mt-12">
         <SectionHead title="방금 산에서 내려왔어요" sub="채취일이 가까운 순서예요" href="/products?sort=harvest" />
         {latest.length ? <ProductGrid items={latest} highlight={myCodes} /> : <EmptyState title="아직 등록된 상품이 없어요" desc="채취자들이 곧 첫 수확을 올려드릴 거예요." />}
+      </section>
+
+      {/* ── 구해요 ───────────────────────── */}
+      <section className="container-x mt-12">
+        <SectionHead title="🙋 이웃들이 찾고 있어요" sub="찾는 품목이 없다면 구해요를 올려보세요. 팔아본 채취자에게 먼저 알려드려요." href="/wants" />
+        <div className="grid gap-3 md:grid-cols-3">
+          {wants.map((w) => <WantCard key={w.id} w={w} />)}
+          <Link href={user ? "/wants/new" : "/login?next=/wants/new"} className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-[1.5rem] border-2 border-dashed border-forest-300 bg-forest-50/50 p-5 text-center transition hover:bg-forest-50">
+            <span className="text-3xl">🙋</span>
+            <span className="font-extrabold text-forest-800">나도 구해요 올리기</span>
+            <span className="text-xs text-bark-500">예: 송이버섯 1kg, 추석 전까지</span>
+          </Link>
+        </div>
       </section>
 
       {/* ── 이용 방법 ───────────────────────── */}
